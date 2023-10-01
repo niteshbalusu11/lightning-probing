@@ -5,12 +5,12 @@ mod tests {
     use lightning_probing::probe_destination;
     use lightning_probing::ProbeDestination;
     use lnd_grpc_rust::lnrpc::GetInfoRequest;
+    use log::error;
     use std::env;
 
     #[tokio::test]
-    async fn test_probe_destination() -> anyhow::Result<()> {
+    async fn test_probe_payment_request() -> anyhow::Result<()> {
         dotenv().ok();
-        // Set the log level to "debug"
 
         let cert = env::var("CERT").context("failed to get cert")?;
         let macaroon = env::var("MACAROON").context("failed to get macaroon")?;
@@ -31,18 +31,20 @@ mod tests {
         // Create a ProbeDestination struct
         let data = ProbeDestination {
             client,
-            probe_amount: Some(100000),
-            destination_pubkey: Some(
-                "0364913d18a19c671bb36dd04d6ad5be0fe8f2894314c36a9db3f03c2d414907e1".to_string(),
-            ),
+            probe_amount: None,
+            destination_pubkey: None,
             timeout_seconds: Some(300),
             fee_limit_sat: 1000,
-            payment_request: None,
+            payment_request: Some("lnbc10u1pj3ngcdpp5e7898f30qnx793n8vmzsm7aep5nlwfqg6tkkvkdvjymwpugf848sdpv2phhwetjv4jzqcneypqyc6t8dp6xu6twva2xjuzzda6qcqzzsxqrrsssp5xpqjfm2jufpcxk0zgqelcptufurqqjse3rz5dtdega3z7qtch79s9qyyssq6qllysm4sqry9plmvk9ugxyq598y3m7u4dyx38n77ethnm30knfs5xmwufk8knm04xwvr67wp20huz4872800ufx6zy6fqkg22wpatsqzml6rg".to_string()),
         };
 
         // Call probe_destination and check the result
-        let result = probe_destination(data);
-        assert!(result.await.is_ok());
+        let result = probe_destination(data).await;
+        if let Err(e) = &result {
+            error!("An error occurred: {:?}", e);
+        }
+
+        assert!(result.is_ok());
 
         Ok(())
     }
