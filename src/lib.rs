@@ -1,15 +1,17 @@
 use anyhow::{bail, Context};
+use constants::FailureReason;
 use lnd_grpc_rust::{
-    lnrpc::{self, payment::PaymentStatus, FeatureBit, PaymentFailureReason},
+    lnrpc::{self, payment::PaymentStatus, FeatureBit},
     routerrpc, LndClient,
 };
-use log::{error, info, warn};
+use log::info;
 use std::{env, result::Result::Ok};
+mod constants;
 mod utils;
 use dotenv::dotenv;
-use utils::generate_secret_for_probes;
+use utils::{filter_channels_from_pubkeys, generate_secret_for_probes};
 
-use crate::utils::{get_node_features, get_node_info};
+use crate::utils::{get_node_features, get_node_info, print_in_flight_payment};
 
 const TLV_ONION_REQ: i32 = FeatureBit::TlvOnionReq as i32;
 const DEFAULT_TIMEOUT_SECONDS: i32 = 300;
@@ -17,14 +19,24 @@ const ZERO_AMOUNT: i64 = 0;
 
 pub struct ProbeDestination {
     pub client: LndClient,
-    pub probe_amount: Option<i64>,
+    pub probe_amount_sat: Option<i64>,
     pub destination_pubkey: Option<String>,
     pub timeout_seconds: Option<i32>,
     pub fee_limit_sat: i64,
     pub payment_request: Option<String>,
+    pub outgoing_pubkeys: Option<Vec<String>>,
+    pub last_hop_pubkey: Option<String>,
+    pub max_paths: Option<u32>,
 }
 
-pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<()> {
+#[derive(Debug)]
+pub struct ReturnValue {
+    pub payment: lnrpc::Payment,
+    pub is_probe_success: bool,
+    pub failure_reason: FailureReason,
+}
+
+pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<ReturnValue> {
     dotenv().ok();
 
     let log_level = env::var("PROBE_LOG_LEVEL").unwrap_or("info".to_string());
@@ -43,7 +55,17 @@ pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<()>
 
     let mut destination: String = "".to_string();
     let mut features: Vec<i32> = vec![TLV_ONION_REQ];
-    let mut amount: i64 = args.probe_amount.unwrap_or_default();
+    let mut amount: i64 = args.probe_amount_sat.unwrap_or_default();
+    let mut outgoing_channel_ids: Vec<u64> = vec![];
+
+    if args.outgoing_pubkeys.is_some() {
+        let res =
+            filter_channels_from_pubkeys(&mut args.client, args.outgoing_pubkeys.unwrap()).await?;
+
+        outgoing_channel_ids = res.channels.into_iter().map(|n| n.chan_id).collect();
+
+        info!("outgoung channel ids are: {:?}", outgoing_channel_ids);
+    }
 
     if args.destination_pubkey.is_some() {
         destination = args.destination_pubkey.clone().unwrap();
@@ -90,6 +112,8 @@ pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<()>
         payment_hash: hash,
         timeout_seconds: args.timeout_seconds.unwrap_or(DEFAULT_TIMEOUT_SECONDS),
         fee_limit_sat: args.fee_limit_sat,
+        max_parts: args.max_paths.unwrap_or_default(),
+        outgoing_chan_ids: outgoing_channel_ids,
 
         ..Default::default()
     };
@@ -106,25 +130,23 @@ pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<()>
 
     while let Some(payment) = response.message().await.context("Failed to get payment")? {
         if let Some(status) = PaymentStatus::from_i32(payment.status) {
-            // info!("probing: {:?}", payment.htlcs);
-
-            if status == PaymentStatus::Succeeded {
-                info!("payment succeeded {:?}", payment.failure_reason());
-
-                return Ok(());
+            let failure_reason = FailureReason::from(payment.failure_reason);
+            if status == PaymentStatus::Failed {
+                let is_probe_success = failure_reason == FailureReason::IncorrectPaymentDetails;
+                return Ok(ReturnValue {
+                    failure_reason,
+                    is_probe_success,
+                    payment,
+                });
             }
-
-            if status == PaymentStatus::Failed
-                && payment.failure_reason()
-                    == PaymentFailureReason::FailureReasonIncorrectPaymentDetails
-            {
-                warn!("Payment failed: {:?}", payment.failure_reason());
-                return Ok(());
+            if status == PaymentStatus::InFlight {
+                let details = print_in_flight_payment(payment.clone())?;
+                if let Some(last_detail) = details.last() {
+                    info!("payment inflight {:?}", last_detail);
+                }
             }
-        } else {
-            error!("Unknown payment status {:?}", payment.failure_reason());
         }
     }
 
-    Ok(())
+    bail!("An Unexpected error occoured")
 }

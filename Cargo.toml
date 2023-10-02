@@ -13,6 +13,8 @@ lnd_grpc_rust = "2.3.0"
 log = "0.4.20"
 pretty_env_logger = "0.5.0"
 rand = "0.8.5"
+serde = {version = "1.0.188", features = ["derive"]}
+serde_json = "1.0.107"
 sha2 = "0.10.8"
 tokio = {version = "1.32.0", features = ['full']}
 

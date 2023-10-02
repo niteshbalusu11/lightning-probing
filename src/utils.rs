@@ -1,12 +1,15 @@
-use std::collections::HashMap;
-
-use anyhow::Context;
+use anyhow::{Context, Ok};
 use lnd_grpc_rust::{
     lnrpc::{self, Feature},
     LndClient,
 };
 use rand::Rng;
+use serde::Serialize;
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+
+use crate::constants::FailureCode;
+extern crate serde_json;
 
 const FEATURE_TYPE_CHANNEL_TYPE: u32 = 45;
 const FEATURE_TYPE_TRUSTED_FUNDING: u32 = 51;
@@ -52,4 +55,77 @@ pub fn get_node_features(features: HashMap<u32, Feature>) -> Vec<i32> {
         .collect();
 
     features
+}
+
+pub async fn filter_channels_from_pubkeys(
+    client: &mut LndClient,
+    pubkeys: Vec<String>,
+) -> anyhow::Result<lnrpc::ListChannelsResponse> {
+    let request = lnrpc::ListChannelsRequest {
+        active_only: true,
+        ..Default::default()
+    };
+
+    let response = client
+        .lightning()
+        .list_channels(request)
+        .await
+        .context("Failed to list channels")?;
+
+    let channels = response
+        .into_inner()
+        .channels
+        .into_iter()
+        .filter(|n| pubkeys.contains(&n.remote_pubkey))
+        .collect();
+
+    let filtered_response = lnrpc::ListChannelsResponse {
+        channels,
+        ..Default::default()
+    };
+
+    Ok(filtered_response)
+}
+
+#[derive(Serialize, Debug)]
+pub struct Hop {
+    pub id: u64, // Assuming the type is u64, adjust as necessary
+    pub pubkey: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct FailureDetail {
+    pub code: FailureCode,
+    pub hops: Vec<Hop>,
+}
+
+pub fn print_in_flight_payment(payment: lnrpc::Payment) -> anyhow::Result<Vec<FailureDetail>> {
+    let details: Vec<FailureDetail> = payment
+        .htlcs
+        .into_iter()
+        .filter_map(|x| {
+            let failure_code = FailureCode::from(x.failure?.code);
+            let hops: Vec<_> = x
+                .route?
+                .hops
+                .into_iter()
+                .map(|n| Hop {
+                    id: n.chan_id,
+                    pubkey: n.pub_key,
+                })
+                .collect();
+
+            // Filter out elements with no failure_code or hops
+            if hops.is_empty() {
+                None
+            } else {
+                Some(FailureDetail {
+                    code: failure_code,
+                    hops,
+                })
+            }
+        })
+        .collect();
+
+    Ok(details)
 }

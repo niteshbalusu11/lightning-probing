@@ -6,6 +6,7 @@ mod tests {
     use lightning_probing::ProbeDestination;
     use lnd_grpc_rust::lnrpc::GetInfoRequest;
     use log::error;
+    use log::info;
     use std::env;
 
     #[tokio::test]
@@ -31,17 +32,25 @@ mod tests {
         // Create a ProbeDestination struct
         let data = ProbeDestination {
             client,
-            probe_amount: None,
+            probe_amount_sat: None,
             destination_pubkey: None,
-            timeout_seconds: Some(300),
+            timeout_seconds: Some(30),
             fee_limit_sat: 1000,
-            payment_request: Some("lnbc10u1pj3ngcdpp5e7898f30qnx793n8vmzsm7aep5nlwfqg6tkkvkdvjymwpugf848sdpv2phhwetjv4jzqcneypqyc6t8dp6xu6twva2xjuzzda6qcqzzsxqrrsssp5xpqjfm2jufpcxk0zgqelcptufurqqjse3rz5dtdega3z7qtch79s9qyyssq6qllysm4sqry9plmvk9ugxyq598y3m7u4dyx38n77ethnm30knfs5xmwufk8knm04xwvr67wp20huz4872800ufx6zy6fqkg22wpatsqzml6rg".to_string()),
+            payment_request: Some("lnbc37300n1pj3n5whpp5u2gw3k7426dshkyd4rg5vvq5f6lqzgvfk27l3n4pujsqjtyd32hsdqqcqzpgxqzpesp5df5m797vrel5r4pkufhnk99fdvzpz6xsllgfwycd0g2fgk6v3gpq9qyyssqc07t2925lqw38hz7t9zfzk0jmw79alnxywn0wu74mwxee30dvw9pwll2xprk8g3l6402wdlw059mqm42z9lqu0m76m9dzq6peuyjmfcp2974l8".to_string()),
+            // outgoing_pubkeys: Some(vec![
+            //     "03037dc08e9ac63b82581f79b662a4d0ceca8a8ca162b1af3551595b8f2d97b70a".to_string(),
+            // ]),
+            outgoing_pubkeys: None,
+            last_hop_pubkey: None,
+            max_paths: None,
         };
 
         // Call probe_destination and check the result
         let result = probe_destination(data).await;
-        if let Err(e) = &result {
-            error!("An error occurred: {:?}", e);
+
+        match &result {
+            Ok(e) => info!("Result is: {:?}", e),
+            Err(e) => error!("Error is: {:?}", e),
         }
 
         assert!(result.is_ok());
