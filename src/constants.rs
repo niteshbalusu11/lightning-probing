@@ -2,7 +2,7 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 #[repr(i32)]
-pub enum FailureCode {
+pub(crate) enum FailureCode {
     IncorrectOrUnknownPaymentDetails = 1,
     IncorrectPaymentAmount = 2,
     FinalIncorrectCltvExpiry = 3,

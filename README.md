@@ -2,7 +2,13 @@
 
 A package to probe the lightning network.
 
-## Installation
+# Add a dependency
+
+```
+cargo add lightning-probing
+```
+
+## Installation locally for testing
 
 - Install Rust https://www.rust-lang.org/
 

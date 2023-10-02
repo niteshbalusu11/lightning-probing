@@ -14,7 +14,7 @@ extern crate serde_json;
 const FEATURE_TYPE_CHANNEL_TYPE: u32 = 45;
 const FEATURE_TYPE_TRUSTED_FUNDING: u32 = 51;
 
-pub fn generate_secret_for_probes() -> Vec<u8> {
+pub(crate) fn generate_secret_for_probes() -> Vec<u8> {
     // Generate a random 32-byte secret
     let mut secret = [0u8; 32];
     rand::thread_rng().fill(&mut secret);
@@ -27,7 +27,7 @@ pub fn generate_secret_for_probes() -> Vec<u8> {
     hash
 }
 
-pub async fn get_node_info(
+pub(crate) async fn get_node_info(
     client: &mut LndClient,
     destination: String,
 ) -> anyhow::Result<lnrpc::NodeInfo> {
@@ -47,7 +47,7 @@ pub async fn get_node_info(
     Ok(node_info)
 }
 
-pub fn get_node_features(features: HashMap<u32, Feature>) -> Vec<i32> {
+pub(crate) fn get_node_features(features: HashMap<u32, Feature>) -> Vec<i32> {
     let features: Vec<i32> = features
         .into_iter()
         .filter(|(k, _)| *k != FEATURE_TYPE_CHANNEL_TYPE && *k != FEATURE_TYPE_TRUSTED_FUNDING)
@@ -57,7 +57,7 @@ pub fn get_node_features(features: HashMap<u32, Feature>) -> Vec<i32> {
     features
 }
 
-pub async fn filter_channels_from_pubkeys(
+pub(crate) async fn filter_channels_from_pubkeys(
     client: &mut LndClient,
     pubkeys: Vec<String>,
 ) -> anyhow::Result<lnrpc::ListChannelsResponse> {
@@ -88,18 +88,20 @@ pub async fn filter_channels_from_pubkeys(
 }
 
 #[derive(Serialize, Debug)]
-pub struct Hop {
+pub(crate) struct Hop {
     pub id: u64, // Assuming the type is u64, adjust as necessary
     pub pubkey: String,
 }
 
 #[derive(Serialize, Debug)]
-pub struct FailureDetail {
+pub(crate) struct FailureDetail {
     pub code: FailureCode,
     pub hops: Vec<Hop>,
 }
 
-pub fn print_in_flight_payment(payment: lnrpc::Payment) -> anyhow::Result<Vec<FailureDetail>> {
+pub(crate) fn print_in_flight_payment(
+    payment: lnrpc::Payment,
+) -> anyhow::Result<Vec<FailureDetail>> {
     let details: Vec<FailureDetail> = payment
         .htlcs
         .into_iter()
