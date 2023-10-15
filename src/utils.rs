@@ -11,7 +11,6 @@ use std::collections::HashMap;
 use crate::constants::FailureCode;
 extern crate serde_json;
 
-const FEATURE_TYPE_CHANNEL_TYPE: u32 = 45;
 const FEATURE_TYPE_TRUSTED_FUNDING: u32 = 51;
 
 pub(crate) fn generate_secret_for_probes() -> Vec<u8> {
@@ -50,7 +49,7 @@ pub(crate) async fn get_node_info(
 pub(crate) fn get_node_features(features: HashMap<u32, Feature>) -> Vec<i32> {
     let features: Vec<i32> = features
         .into_iter()
-        .filter(|(k, _)| *k != FEATURE_TYPE_CHANNEL_TYPE && *k != FEATURE_TYPE_TRUSTED_FUNDING)
+        .filter(|(k, _)| *k != FEATURE_TYPE_TRUSTED_FUNDING)
         .map(|(k, _)| k as i32)
         .collect();
 

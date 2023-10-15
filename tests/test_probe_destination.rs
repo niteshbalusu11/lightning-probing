@@ -40,7 +40,7 @@ mod tests {
             client,
             probe_amount_sat: Some(3000),
             destination_pubkey: Some(
-                "02fa0d65e99ebcbc8892b844b4c94d6c9307161776adbc58bf11b0a0f9908d7042".to_string(),
+                "033a8f92bb6ed087e13270ffbbfe65dcd9c4531d9f63f01ae481ec6257df97f4cf".to_string(),
             ),
             timeout_seconds: Some(20),
             fee_limit_sat: 1000,
