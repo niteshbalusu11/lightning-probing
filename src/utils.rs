@@ -98,36 +98,3 @@ pub(crate) struct FailureDetail {
     pub code: FailureCode,
     pub hops: Vec<Hop>,
 }
-
-pub(crate) fn print_in_flight_payment(
-    payment: lnrpc::Payment,
-) -> anyhow::Result<Vec<FailureDetail>> {
-    let details: Vec<FailureDetail> = payment
-        .htlcs
-        .into_iter()
-        .filter_map(|x| {
-            let failure_code = FailureCode::from(x.failure?.code);
-            let hops: Vec<_> = x
-                .route?
-                .hops
-                .into_iter()
-                .map(|n| Hop {
-                    id: n.chan_id,
-                    pubkey: n.pub_key,
-                })
-                .collect();
-
-            // Filter out elements with no failure_code or hops
-            if hops.is_empty() {
-                None
-            } else {
-                Some(FailureDetail {
-                    code: failure_code,
-                    hops,
-                })
-            }
-        })
-        .collect();
-
-    Ok(details)
-}
