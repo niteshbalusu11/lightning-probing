@@ -5,7 +5,7 @@ use lnd_grpc_rust::{
     routerrpc, LndClient,
 };
 use log::info;
-use std::{env, result::Result::Ok};
+use std::result::Result::Ok;
 mod constants;
 mod utils;
 use dotenv::dotenv;
@@ -30,20 +30,14 @@ pub struct ProbeDestination {
 }
 
 #[derive(Debug)]
-pub struct ReturnValue {
+pub struct ProbeResult {
     pub payment: lnrpc::Payment,
     pub is_probe_success: bool,
     pub failure_reason: FailureReason,
 }
 
-pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<ReturnValue> {
+pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<ProbeResult> {
     dotenv().ok();
-
-    let log_level = env::var("PROBE_LOG_LEVEL").unwrap_or("info".to_string());
-
-    env::set_var("RUST_LOG", log_level);
-
-    pretty_env_logger::init();
 
     if args.payment_request.is_none() && args.destination_pubkey.is_none() {
         bail!("ExpectedEitherPaymentRequestOrDestinationPubkey");
@@ -133,7 +127,7 @@ pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<Ret
             let failure_reason = FailureReason::from(payment.failure_reason);
             if status == PaymentStatus::Failed {
                 let is_probe_success = failure_reason == FailureReason::IncorrectPaymentDetails;
-                return Ok(ReturnValue {
+                return Ok(ProbeResult {
                     failure_reason,
                     is_probe_success,
                     payment,

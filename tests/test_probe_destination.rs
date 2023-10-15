@@ -13,6 +13,12 @@ mod tests {
     async fn test_probe_destination() -> anyhow::Result<()> {
         dotenv().ok();
 
+        let log_level = env::var("PROBE_LOG_LEVEL").unwrap_or("info".to_string());
+
+        env::set_var("RUST_LOG", log_level);
+
+        pretty_env_logger::init();
+
         let cert = env::var("CERT").context("failed to get cert")?;
         let macaroon = env::var("MACAROON").context("failed to get macaroon")?;
         let socket = env::var("SOCKET").context("failed to get socket")?;
@@ -32,9 +38,9 @@ mod tests {
         // Create a ProbeDestination struct
         let data = ProbeDestination {
             client,
-            probe_amount_sat: Some(3000000),
+            probe_amount_sat: Some(3000),
             destination_pubkey: Some(
-                "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f".to_string(),
+                "02fa0d65e99ebcbc8892b844b4c94d6c9307161776adbc58bf11b0a0f9908d7042".to_string(),
             ),
             timeout_seconds: Some(20),
             fee_limit_sat: 1000,

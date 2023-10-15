@@ -13,6 +13,12 @@ mod tests {
     async fn test_probe_payment_request() -> anyhow::Result<()> {
         dotenv().ok();
 
+        let log_level = env::var("PROBE_LOG_LEVEL").unwrap_or("info".to_string());
+
+        env::set_var("RUST_LOG", log_level);
+
+        pretty_env_logger::init();
+
         let cert = env::var("CERT").context("failed to get cert")?;
         let macaroon = env::var("MACAROON").context("failed to get macaroon")?;
         let socket = env::var("SOCKET").context("failed to get socket")?;
@@ -36,7 +42,7 @@ mod tests {
             destination_pubkey: None,
             timeout_seconds: Some(30),
             fee_limit_sat: 1000,
-            payment_request: Some("lnbc37300n1pj3n5whpp5u2gw3k7426dshkyd4rg5vvq5f6lqzgvfk27l3n4pujsqjtyd32hsdqqcqzpgxqzpesp5df5m797vrel5r4pkufhnk99fdvzpz6xsllgfwycd0g2fgk6v3gpq9qyyssqc07t2925lqw38hz7t9zfzk0jmw79alnxywn0wu74mwxee30dvw9pwll2xprk8g3l6402wdlw059mqm42z9lqu0m76m9dzq6peuyjmfcp2974l8".to_string()),
+            payment_request: Some("lnbcrt500u1pjjkhkhpp5cg6ussfmcycsjfhrdk44ap57whr8s0xckzcpqpdqxm8m59je2yaqdqqcqzzsxqyz5vqsp5ah8zfz8kvuea3xwnpch0rsmg6ky5dln4ex7f5fef4x6zz5ycvj0q9qyyssqntg770uaw0f8etnk06nmfvxwpgsh24ts2z4mlaphznmt9h90nkqn6z2dxl3hzjdwhyq4czrldl3tv698yw43j7wjxscevktaxyf243qqegcx54".to_string()),
             // outgoing_pubkeys: Some(vec![
             //     "03037dc08e9ac63b82581f79b662a4d0ceca8a8ca162b1af3551595b8f2d97b70a".to_string(),
             // ]),
