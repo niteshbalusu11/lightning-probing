@@ -1,6 +1,6 @@
 [package]
 name = "lightning-probing"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 author = "Nitesh Balusu <niteshbalusu@protonmail.com>"
 description = "A library for probing the lightning network."
