@@ -1,7 +1,7 @@
 use anyhow::{bail, Context};
 use constants::FailureReason;
 use lnd_grpc_rust::{
-    lnrpc::{self, payment::PaymentStatus, FeatureBit},
+    lnrpc::{self, payment::PaymentStatus, FeatureBit, PaymentFailureReason},
     routerrpc, LndClient,
 };
 use std::result::Result::Ok;
@@ -31,7 +31,7 @@ pub struct ProbeDestination {
 pub struct ProbeResult {
     pub payment: lnrpc::Payment,
     pub is_probe_success: bool,
-    pub failure_reason: FailureReason,
+    pub failure_reason: PaymentFailureReason,
 }
 
 pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<ProbeResult> {
@@ -122,7 +122,7 @@ pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<Pro
             if status == PaymentStatus::Failed {
                 let is_probe_success = failure_reason == FailureReason::IncorrectPaymentDetails;
                 return Ok(ProbeResult {
-                    failure_reason,
+                    failure_reason: payment.failure_reason(),
                     is_probe_success,
                     payment,
                 });
