@@ -13,6 +13,18 @@ extern crate serde_json;
 
 const FEATURE_TYPE_TRUSTED_FUNDING: u32 = 51;
 
+#[derive(Serialize, Debug)]
+pub(crate) struct Hop {
+    pub id: u64, // Assuming the type is u64, adjust as necessary
+    pub pubkey: String,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct FailureDetail {
+    pub code: FailureCode,
+    pub hops: Vec<Hop>,
+}
+
 pub(crate) fn generate_secret_for_probes() -> Vec<u8> {
     // Generate a random 32-byte secret
     let mut secret = [0u8; 32];
@@ -86,14 +98,35 @@ pub(crate) async fn filter_channels_from_pubkeys(
     Ok(filtered_response)
 }
 
-#[derive(Serialize, Debug)]
-pub(crate) struct Hop {
-    pub id: u64, // Assuming the type is u64, adjust as necessary
-    pub pubkey: String,
-}
+pub(crate) fn print_in_flight_payment(
+    payment: lnrpc::Payment,
+) -> anyhow::Result<Vec<FailureDetail>> {
+    let details: Vec<FailureDetail> = payment
+        .htlcs
+        .into_iter()
+        .filter_map(|x| {
+            let failure_code = FailureCode::from(x.failure?.code);
+            let hops: Vec<_> = x
+                .route?
+                .hops
+                .into_iter()
+                .map(|n| Hop {
+                    id: n.chan_id,
+                    pubkey: n.pub_key,
+                })
+                .collect();
 
-#[derive(Serialize, Debug)]
-pub(crate) struct FailureDetail {
-    pub code: FailureCode,
-    pub hops: Vec<Hop>,
+            // Filter out elements with no failure_code or hops
+            if hops.is_empty() {
+                None
+            } else {
+                Some(FailureDetail {
+                    code: failure_code,
+                    hops,
+                })
+            }
+        })
+        .collect();
+
+    Ok(details)
 }

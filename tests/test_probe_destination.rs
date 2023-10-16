@@ -38,9 +38,9 @@ mod tests {
         // Create a ProbeDestination struct
         let data = ProbeDestination {
             client,
-            probe_amount_sat: Some(3000),
+            probe_amount_sat: Some(1),
             destination_pubkey: Some(
-                "033a8f92bb6ed087e13270ffbbfe65dcd9c4531d9f63f01ae481ec6257df97f4cf".to_string(),
+                "037c4745d5b32e63f1989781c825d5e00798ca9a148455bfd36ab94a1384ec7ae8".to_string(),
             ),
             timeout_seconds: Some(20),
             fee_limit_sat: 1000,

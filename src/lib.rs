@@ -4,15 +4,16 @@ use lnd_grpc_rust::{
     lnrpc::{self, payment::PaymentStatus, FeatureBit, PaymentFailureReason},
     routerrpc, LndClient,
 };
+use log::info;
 use std::result::Result::Ok;
 mod constants;
 mod utils;
 use utils::{filter_channels_from_pubkeys, generate_secret_for_probes};
 
-use crate::utils::{get_node_features, get_node_info};
+use crate::utils::{get_node_features, get_node_info, print_in_flight_payment};
 
 const TLV_ONION_REQ: i32 = FeatureBit::TlvOnionReq as i32;
-const DEFAULT_TIMEOUT_SECONDS: i32 = 300;
+const DEFAULT_TIMEOUT_SECONDS: i32 = 60;
 const ZERO_AMOUNT: i64 = 0;
 
 pub struct ProbeDestination {
@@ -119,6 +120,13 @@ pub async fn probe_destination(mut args: ProbeDestination) -> anyhow::Result<Pro
     while let Some(payment) = response.message().await.context("Failed to get payment")? {
         if let Some(status) = PaymentStatus::from_i32(payment.status) {
             let failure_reason = FailureReason::from(payment.failure_reason);
+            if status == PaymentStatus::InFlight {
+                let details = print_in_flight_payment(payment.clone())?;
+                if let Some(last_detail) = details.last() {
+                    info!("payment inflight {:?}", last_detail);
+                }
+            }
+
             if status == PaymentStatus::Failed {
                 let is_probe_success = failure_reason == FailureReason::IncorrectPaymentDetails;
                 return Ok(ProbeResult {
